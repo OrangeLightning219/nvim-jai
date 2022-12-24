@@ -1,4 +1,3 @@
-
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
 local sorters = require ("telescope.sorters")
@@ -8,7 +7,6 @@ local action_state = require("telescope.actions.state")
 local conf = require("telescope.config").values
 local putils = require("telescope.previewers.utils")
 local themes = require('telescope.themes')
-local notify = require('notify')
 
 local nvim_jai = {}
 
@@ -28,32 +26,17 @@ function nvim_jai.setup(opts)
     end    
 
     vim.api.nvim_create_user_command('JaiFindDeclaration', nvim_jai.show_declarations_picker, {nargs = 0, desc = ''}) 
-    vim.api.nvim_create_user_command('CompileJai', nvim_jai.compile, {nargs = 0, desc = ''}) 
     vim.api.nvim_create_user_command('ExitJai', nvim_jai.exit, {nargs = 0, desc = ''}) 
-
-    vim.api.nvim_create_user_command('JaiTest', nvim_jai.test, {nargs = 0, desc = ''})
     
+    port = opts["port"] or "12345"
     if nvim_jai.channel_id == nil then
-        -- local job = require('plenary.job')
-        -- job:new({
-        --     command = "nvim-cpp",
-        --     cwd = vim.fn.getcwd(),
-        -- }):start()
-        -- vim.loop.sleep(100)
+        local job = require('plenary.job')
+        job:new({
+            command = "nvim-jai " .. port,
+            cwd = vim.fn.getcwd(),
+        }):start()
+        vim.loop.sleep(100)
         nvim_jai.channel_id = vim.fn.sockconnect("tcp", "localhost:12345", {rpc = true})
-        nvim_jai.get_declarations()
-        -- nvim_jai.exit()
-    end
-    -- local result = vim.fn.rpcrequest(nvim_jai.channel_id, "GetDeclarations")
-end
-
-function nvim_jai.test()
-    local result = vim.fn.rpcrequest(nvim_jai.channel_id, "GetDeclarations")
-    local updated = result[1];
-    if updated then
-        print("Success");
-    else
-        print("Fail");
     end
 end
 
@@ -67,11 +50,17 @@ function nvim_jai.get_declarations()
     if updated then
         -- print(vim.inspect(result))
         local files = result[2]
-        local entries = nvim_jai.declaration_entry_cache or {}
+        local cache = nvim_jai.response_cache or {}
+
         for file, declarations in pairs(files) do
+            cache[file] = declarations
+        end
+        
+        local entries = {}
+        for file, declarations in pairs(cache) do
             local functions = declarations["functions"]
-            -- local structs = declarations["structs"]
-            -- local macros = declarations["macros"]
+            local structs = declarations["structs"]
+            local enums = declarations["enums"]
             
             for index, funct in ipairs(functions) do
                 local entry = funct
@@ -81,23 +70,23 @@ function nvim_jai.get_declarations()
                 table.insert(entries, entry)
             end
 
-            -- for index, struct in ipairs(structs) do
-            --     local entry = struct
-            --     entry["bufnr"] = vim.uri_to_bufnr(file)
-            --     entry["path"] = file
-            --     entry["symbol_type"] = "struct"
-            --     entry["struct_type"] = struct["type"]
-            --     table.insert(entries, entry)
-            -- end
+            for index, struct in ipairs(structs) do
+                local entry = struct
+                entry["bufnr"] = vim.uri_to_bufnr(file)
+                entry["path"] = file
+                entry["symbol_type"] = "struct"
+                table.insert(entries, entry)
+            end
 
-            -- for index, macro in ipairs(macros) do
-            --     local entry = macro
-            --     entry["bufnr"] = vim.uri_to_bufnr(file)
-            --     entry["path"] = file
-            --     entry["symbol_type"] = "macro"
-            --     table.insert(entries, entry)
-            -- end
+            for index, enum in ipairs(enums) do
+                local entry = enum
+                entry["bufnr"] = vim.uri_to_bufnr(file)
+                entry["path"] = file
+                entry["symbol_type"] = "enum"
+                table.insert(entries, entry)
+            end
         end
+        nvim_jai.response_cache = cache;
         nvim_jai.declaration_entry_cache = entries
         return entries
     else
@@ -110,17 +99,17 @@ function nvim_jai.create_declaration_entry(entry)
     entry["finish"] = 0
     entry["display"] = function(self, picker)
         local highlights = {}
-        if entry["symbol_type"] == "macro" then
-            highlights = {{{0, #entry["ordinal"]}, "Define"}}
-        elseif entry["symbol_type"] == "struct" then
+        if entry["symbol_type"] == "enum" or entry["symbol_type"] == "struct" then
             highlights = 
             {
-                {{0, #entry["struct_type"]}, "Keyword"}, 
-                {{#entry["struct_type"] + 1, #entry["ordinal"]}, "Type"}
+                {{0, entry["name"]}, "Type"}, 
+                {{entry["name"] + 2, entry["name"] + 3}, "Keyword"},
+                {{entry["name"] + 4, entry["name"] + 4 + #entry["symbol_type"]}, "Keyword"}
             }
         else -- function
             local type_length = 2 --entry["return_type"]
             local name_length = entry["name"]
+
             highlights = 
             {
                 {{0, name_length}, "Function"},
@@ -141,8 +130,8 @@ function nvim_jai.create_declaration_entry(entry)
             if #entry["arguments"] == 0 then
                 arg_offset = arg_offset + 1 
             end
+            
             table.insert(highlights, {{arg_offset - 1, arg_offset}, "Delimiter"}) -- )
-
             table.insert(highlights, {{arg_offset + 1, arg_offset + 3}, "Keyword"}) -- ->
             
             local ret_offset = arg_offset + 6
@@ -205,49 +194,6 @@ function nvim_jai.show_declarations_picker(opts)
     picker:find()
 end
 
-function nvim_jai.compile()
-    if nvim_jai.channel_id == nil then
-        return {}
-    end
-    -- print("Compilation started")
-    -- vim.api.nvim_echo({{"Compilation started", "None" }}, false, {})
-    local notify_config = {render = "minimal", stages = "fade", fps = 60 }
-    local result = vim.fn.rpcrequest(nvim_jai.channel_id, "Compile")
-
-    local started = result["started"]
-    local messages = result["messages"] or {}
-    
-    if started and #messages > 0 then
-        local entries = {}
-        for index, message in ipairs(messages) do
-            local entry = {}
-            -- entry["bufnr"] = vim.uri_to_bufnr("E:\\Projects\\nvim-cpp\\main.cpp")
-            entry["filename"] = message["filename"] or ""
-            entry["lnum"] = message["lnum"] or 1
-            entry["col"] = message["col"] or 1
-            entry["nr"] = message["nr"] or ""
-            entry["text"] = message["text"]
-            entry["type"] = message["type"]
-            table.insert(entries, entry)
-        end
-        -- print(vim.inspect(entries))
-        notify("Compilation failed", "error", notify_config)
-        vim.fn.setqflist(entries, "r")
-        vim.api.nvim_command("bot copen")
-        -- vim.api.nvim_command("wincmd p")
-    elseif started and #messages == 0 then
-        -- print("Compilation successful")
-        -- vim.api.nvim_echo({{"Compilation successful", "None"}}, false, {})
-        notify("Compilation successful", "info", notify_config)
-        vim.api.nvim_command("cclose")
-    else
-        -- print("Compilation failed")
-        -- vim.api.nvim_echo({{"Compilation failed", "None"}}, false, {})
-        notify("Compilation failed", "error", notify_config)
-        vim.api.nvim_command("cclose")
-    end
-end
-
 function nvim_jai.exit()
     if nvim_jai.channel_id ~= nil then
         result = vim.fn.rpcrequest(nvim_jai.channel_id, "Exit")
@@ -255,7 +201,5 @@ function nvim_jai.exit()
         nvim_jai.channel_id = nil
     end
 end
-
-nvim_jai.setup()
 
 return nvim_jai

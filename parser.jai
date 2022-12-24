@@ -52,6 +52,8 @@ build :: () {
     encoder.allocated_size = RESPONSE_BUFFER_SIZE;
 
     all_functions: Table(string, [..]*Code_Procedure_Header);
+    all_structs: Table(string, [..]*Code_Scope_Entry);
+    all_enums: Table(string, [..]*Code_Scope_Entry);
 
     while true 
     {
@@ -69,126 +71,193 @@ build :: () {
                 {
                     file := it_index;
                     encode_string(file, *encoder);
-                    encode_map(1, *encoder);
+                    encode_map(3, *encoder);
                     {
-                        functions, found := table_find(*all_functions, it_index);
-                        assert(found);
-                        encode_string("functions", *encoder);
-                        encode_array(cast(u32)functions.count, *encoder);
-                        for header: functions
+                        functions: [..]*Code_Procedure_Header;
+                        structs: [..]*Code_Scope_Entry;
+                        enums: [..]*Code_Scope_Entry;
+                        found: bool;
+                        
+                        structs, found = table_find(*all_structs, it_index);
+                        encode_string("structs", *encoder);
+                        if found
                         {
-                            display: string;
-                            display = tprint("% :: ( ", header.name);
-
-                            encode_map(6, *encoder);
-
-                            encode_string("lnum", *encoder);
-                            encode_uint(cast(u32)header.l0, *encoder);
-
-                            encode_string("col", *encoder);
-                            encode_uint(cast(u32)header.c0, *encoder);
-
-                            encode_string("name", *encoder);
-                            encode_uint(cast(u32)header.name.count, *encoder);
-
-                            encode_string("arguments", *encoder);
-                            encode_array(cast(u32)header.arguments.count, *encoder);
-
-                            for arg: header.arguments
+                            encode_array(cast(u32)structs.count, *encoder);
+                            for s: structs
                             {
-                                encode_map(2, *encoder);
+                                encode_map(4, *encoder);
+                                
+                                encode_string("lnum", *encoder);
+                                encode_uint(cast(u32)s.l0, *encoder);
+
+                                encode_string("col", *encoder);
+                                encode_uint(cast(u32)s.c0, *encoder);
+
                                 encode_string("name", *encoder);
-                                encode_uint(cast(u32)arg.name.count, *encoder);
-
-                                type := get_type_string(arg.type_inst.result);
-                                if arg.type_inst.result.type == .PROCEDURE
-                                {
-                                    t := cast(*Type_Info_Procedure) arg.type_inst.result;
-                                    type = tprint("( ");
-
-                                    for proc_arg: t.argument_types
-                                    {
-                                        type = tprint("%1%2, ", type, get_type_string(proc_arg));
-                                    }
-                                    
-                                    if t.argument_types.count == 0
-                                    {
-                                        type.count -= 1;
-                                    }
-                                    else
-                                    {
-                                        type.count -= 2;
-                                    }
-
-                                    type = tprint("% ) -> ( ", type);
-
-                                    for proc_ret: t.return_types
-                                    {
-                                        type = tprint("%1%2, ", type, get_type_string(proc_ret));
-                                    }
-                                    
-                                    if t.return_types.count == 0
-                                    {
-                                        type = tprint("%void )", type);   
-                                    }
-                                    else
-                                    {
-                                        type.count -= 2;
-                                        type = tprint("% )", type);                                    
-                                    }
-                                }
-                                encode_string("type", *encoder);
-                                encode_uint(cast(u32)type.count, *encoder);
-                                display = tprint("%1%2: %3, ", display, arg.name, type);
+                                encode_uint(cast(u32)s.name.count, *encoder);
+                                
+                                encode_string("ordinal", *encoder);
+                                encode_string(tprint("% :: struct", s.name), *encoder);
+                                print("struct %\n", s.name);
                             }
-
-                            if header.arguments.count == 0
-                            {
-                                display.count -= 1;   
-                            }
-                            else
-                            {
-                                display.count -= 2;
-                            }
-
-                            display = tprint("% ) -> ( ", display);
-
-                            encode_string("returns", *encoder);
-                            return_count := ifx header.returns.count == 0 then 1 else header.returns.count;
-                            encode_array(cast(u32)return_count, *encoder);
-
-                            for ret: header.returns
-                            {
-                                encode_map(2, *encoder);
-                                encode_string("name", *encoder);
-                                encode_uint(cast(u32)ret.name.count, *encoder);
-
-                                type := get_type_string(ret.type_inst.result);
-                                encode_string("type", *encoder);
-                                encode_uint(cast(u32)type.count, *encoder);
-                                display = tprint("%1%2%3%4, ", display, ret.name, ifx ret.name.count == 0 then "" else ": ", type);
-                            }
-
-                            if header.returns.count == 0
-                            {
-                                encode_map(2, *encoder);
-                                encode_string("name", *encoder);
-                                encode_uint(0, *encoder);
-
-                                encode_string("type", *encoder);
-                                encode_uint(4, *encoder); // void
-                                display = tprint("%void )", display);   
-                            }
-                            else
-                            {
-                                display.count -= 2;
-                                display = tprint("% )", display);
-                            }
-                            print("%\n", display);
-                            encode_string("ordinal", *encoder);
-                            encode_string(display, *encoder);
+                        }
+                        else
+                        {
+                            encode_array(0, *encoder);
                         }
                         
+                        enums, found = table_find(*all_enums, it_index);
+                        encode_string("enums", *encoder);
+                        if found
+                        {
+                            encode_array(cast(u32)enums.count, *encoder);
+                            for e: enums
+                            {
+                                encode_map(4, *encoder);
+                                
+                                encode_string("lnum", *encoder);
+                                encode_uint(cast(u32)e.l0, *encoder);
+
+                                encode_string("col", *encoder);
+                                encode_uint(cast(u32)e.c0, *encoder);
+
+                                encode_string("name", *encoder);
+                                encode_uint(cast(u32)e.name.count, *encoder);
+                                
+                                encode_string("ordinal", *encoder);
+                                encode_string(tprint("% :: enum", e.name), *encoder);
+                                print("enum %\n", e.name);
+                            }
+                        }
+                        else
+                        {
+                            encode_array(0, *encoder);
+                        }
+
+                        functions, found = table_find(*all_functions, it_index);
+                        encode_string("functions", *encoder);
+                        if found
+                        {
+                            encode_array(cast(u32)functions.count, *encoder);
+                            for header: functions
+                            {
+                                display: string;
+                                display = tprint("% :: ( ", header.name);
+
+                                encode_map(6, *encoder);
+
+                                encode_string("lnum", *encoder);
+                                encode_uint(cast(u32)header.l0, *encoder);
+
+                                encode_string("col", *encoder);
+                                encode_uint(cast(u32)header.c0, *encoder);
+
+                                encode_string("name", *encoder);
+                                encode_uint(cast(u32)header.name.count, *encoder);
+
+                                encode_string("arguments", *encoder);
+                                encode_array(cast(u32)header.arguments.count, *encoder);
+
+                                for arg: header.arguments
+                                {
+                                    encode_map(2, *encoder);
+                                    encode_string("name", *encoder);
+                                    encode_uint(cast(u32)arg.name.count, *encoder);
+
+                                    type := get_type_string(arg.type_inst.result);
+                                    if arg.type_inst.result.type == .PROCEDURE
+                                    {
+                                        t := cast(*Type_Info_Procedure) arg.type_inst.result;
+                                        type = tprint("( ");
+
+                                        for proc_arg: t.argument_types
+                                        {
+                                            type = tprint("%1%2, ", type, get_type_string(proc_arg));
+                                        }
+                                        
+                                        if t.argument_types.count == 0
+                                        {
+                                            type.count -= 1;
+                                        }
+                                        else
+                                        {
+                                            type.count -= 2;
+                                        }
+
+                                        type = tprint("% ) -> ( ", type);
+
+                                        for proc_ret: t.return_types
+                                        {
+                                            type = tprint("%1%2, ", type, get_type_string(proc_ret));
+                                        }
+                                        
+                                        if t.return_types.count == 0
+                                        {
+                                            type = tprint("%void )", type);   
+                                        }
+                                        else
+                                        {
+                                            type.count -= 2;
+                                            type = tprint("% )", type);                                    
+                                        }
+                                    }
+                                    encode_string("type", *encoder);
+                                    encode_uint(cast(u32)type.count, *encoder);
+                                    display = tprint("%1%2: %3, ", display, arg.name, type);
+                                }
+
+                                if header.arguments.count == 0
+                                {
+                                    display.count -= 1;   
+                                }
+                                else
+                                {
+                                    display.count -= 2;
+                                }
+
+                                display = tprint("% ) -> ( ", display);
+
+                                encode_string("returns", *encoder);
+                                return_count := ifx header.returns.count == 0 then 1 else header.returns.count;
+                                encode_array(cast(u32)return_count, *encoder);
+
+                                for ret: header.returns
+                                {
+                                    encode_map(2, *encoder);
+                                    encode_string("name", *encoder);
+                                    encode_uint(cast(u32)ret.name.count, *encoder);
+
+                                    type := get_type_string(ret.type_inst.result);
+                                    encode_string("type", *encoder);
+                                    encode_uint(cast(u32)type.count, *encoder);
+                                    display = tprint("%1%2%3%4, ", display, ret.name, ifx ret.name.count == 0 then "" else ": ", type);
+                                }
+
+                                if header.returns.count == 0
+                                {
+                                    encode_map(2, *encoder);
+                                    encode_string("name", *encoder);
+                                    encode_uint(0, *encoder);
+
+                                    encode_string("type", *encoder);
+                                    encode_uint(4, *encoder); // void
+                                    display = tprint("%void )", display);   
+                                }
+                                else
+                                {
+                                    display.count -= 2;
+                                    display = tprint("% )", display);
+                                }
+                                print("%\n", display);
+                                encode_string("ordinal", *encoder);
+                                encode_string(display, *encoder);
+                            }
+                            
+                        }
+                        else
+                        {
+                            encode_array(0, *encoder);
+                        }
                     }
                 }
                 data: string;
@@ -217,17 +286,20 @@ build :: () {
                             header := cast(*Code_Procedure_Header) expression;
                             if header.name != ""
                             {
-                                list := table_find_pointer(*all_functions, path);
-                                if list == null
-                                {
-                                    new_list := New([..]*Code_Procedure_Header);
-                                    array_add(new_list, header);
-                                    table_add(*all_functions, path, <<new_list);   
-                                }
-                                else
-                                {
-                                    array_add(list, header);       
-                                }    
+                                add_declaration(*all_functions, header, path);
+                            }
+                        }
+                        else if(expression.kind == .DECLARATION)
+                        {
+                            declaration := cast(*Code_Declaration) expression;
+                            kind := declaration.expression.kind;
+                            if( kind == .STRUCT)
+                            {
+                                add_declaration(*all_structs, *declaration.entry, path);
+                            }
+                            else if(kind == .ENUM)
+                            {
+                                add_declaration(*all_enums, *declaration.entry, path);
                             }
                         }
                     }
@@ -239,6 +311,21 @@ build :: () {
         }
     }
     compiler_end_intercept(w);
+}
+
+add_declaration :: (table: *Table, declaration: $T, path: string)
+{
+    list := table_find_pointer(table, path);
+    if list == null
+    {
+        new_list := New([..]T);
+        array_add(new_list, declaration);
+        table_add(table, path, <<new_list);
+    }
+    else
+    {
+        array_add(list, declaration);
+    }
 }
 
 get_type_string :: (type: *Type_Info) -> string

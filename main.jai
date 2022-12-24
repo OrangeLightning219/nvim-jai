@@ -37,7 +37,15 @@ main :: ()
     hints.ai_protocol = .IPPROTO_TCP;
     hints.ai_flags = .AI_PASSIVE;
 
-    result := getaddrinfo(null, "12345", *hints, *info);
+    args := get_command_line_arguments();
+    assert(args.count >= 2);
+
+    p := args[1];
+    port := cast(*u8) alloc(p.count + 1);
+    memcpy(port, p.data, p.count);
+    port[p.count] = 0;
+
+    result := getaddrinfo(null, port, *hints, *info);
 
     if result != 0
     {
