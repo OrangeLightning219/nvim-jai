@@ -32,7 +32,8 @@ function nvim_jai.setup(opts)
     if nvim_jai.channel_id == nil then
         local job = require('plenary.job')
         job:new({
-            command = "nvim-jai " .. port,
+            command = "nvim-jai ",
+	    args = {port},
             cwd = vim.fn.getcwd(),
         }):start()
         vim.loop.sleep(100)
