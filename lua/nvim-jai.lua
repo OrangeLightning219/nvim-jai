@@ -28,6 +28,8 @@ function nvim_jai.setup(opts)
     vim.api.nvim_create_user_command('JaiFindDeclaration', nvim_jai.show_declarations_picker, {nargs = 0, desc = ''}) 
     vim.api.nvim_create_user_command('ExitJai', nvim_jai.exit, {nargs = 0, desc = ''}) 
     
+    require('plenary.filetype').add_file('jai')
+    
     port = opts["port"] or "12345"
     if nvim_jai.channel_id == nil then
         local job = require('plenary.job')
