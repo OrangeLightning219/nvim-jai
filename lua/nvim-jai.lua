@@ -37,7 +37,7 @@ function nvim_jai.setup(opts)
             cwd = vim.fn.getcwd(),
         }):start()
         vim.loop.sleep(100)
-        nvim_jai.channel_id = vim.fn.sockconnect("tcp", "localhost:12345", {rpc = true})
+        nvim_jai.channel_id = vim.fn.sockconnect("tcp", "localhost:" .. port, {rpc = true})
     end
 end
 
@@ -104,7 +104,7 @@ function nvim_jai.create_declaration_entry(entry)
             highlights = 
             {
                 {{0, entry["name"]}, "Type"}, 
-                {{entry["name"] + 2, entry["name"] + 3}, "Keyword"},
+                {{entry["name"] + 1, entry["name"] + 3}, "Keyword"},
                 {{entry["name"] + 4, entry["name"] + 4 + #entry["symbol_type"]}, "Keyword"}
             }
         else -- function
