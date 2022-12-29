@@ -12,12 +12,19 @@ File_State :: struct
     size: s64;
 }
 
-parser_path :: #run get_parser_path();
+parser_path :: #run get_parser_path(); 
+response_filename :: #run get_response_filename();
 
 get_parser_path :: () -> string
 {
     current_dir := replace(get_working_directory(), "\\", "/");
     return tprint("%/parser.jai", current_dir);
+}
+
+get_response_filename :: () -> string
+{
+    current_dir := replace(get_working_directory(), "\\", "/");
+    return tprint("%/declarations.response", current_dir);
 }
 
 main :: () 
@@ -153,7 +160,9 @@ main :: ()
             }
             else if command == "GetDeclarations"
             {
-                config, ok := read_entire_file(".nvim-jai");
+                config: string;
+                ok: bool;
+                config, ok = read_entire_file(".nvim-jai");
 
                 if ok
                 {
@@ -161,7 +170,9 @@ main :: ()
                     files_to_parse: [..]string;
                     for all_files
                     {
-                        modtime, size, ok := file_modtime_and_size(it);   
+                        modtime: Apollo_Time;
+                        size: s64;
+                        modtime, size, ok = file_modtime_and_size(it);   
                         assert(ok);
                         file_state: File_State;
                         file_state.modtime = modtime;
@@ -200,16 +211,18 @@ main :: ()
 
                     if send_update
                     {
-                        _, size, ok := file_modtime_and_size("declarations.response");
+                        time: Apollo_Time;
+                        size: s64;
+                        time, size, ok = file_modtime_and_size(response_filename);
                         assert(encoder.length + size <= encoder.allocated_size);
                         response: File;
-                        response, ok = file_open("declarations.response", for_writing = false);
+                        response, ok = file_open(response_filename, for_writing = false, log_errors = false);
                         assert(ok);
                         success, bytes_read := file_read(response, encoder.at, size);
                         assert(success && bytes_read > 0);
                         encoder.length += cast(u32)bytes_read;
                         file_close(*response);
-                        file_delete("declarations.response");
+                        file_delete(response_filename);
                     }
                     else
                     {

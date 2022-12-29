@@ -27,6 +27,8 @@ function nvim_jai.setup(opts)
 
     vim.api.nvim_create_user_command('JaiFindDeclaration', nvim_jai.show_declarations_picker, {nargs = 0, desc = ''}) 
     vim.api.nvim_create_user_command('ExitJai', nvim_jai.exit, {nargs = 0, desc = ''}) 
+
+    vim.api.nvim_create_user_command('CompileJai', nvim_jai.compile, {nargs = 0, desc = ''})
     
     require('plenary.filetype').add_file('jai')
     
@@ -35,7 +37,7 @@ function nvim_jai.setup(opts)
         local job = require('plenary.job')
         job:new({
             command = "nvim-jai",
-	    args = {port},
+    	    args = {port},
             cwd = vim.fn.getcwd(),
         }):start()
         vim.loop.sleep(100)
@@ -43,8 +45,16 @@ function nvim_jai.setup(opts)
     end
 end
 
+function nvim_jai.compile()
+    -- vim.api.nvim_command("make")
+    -- vim.cmd("make")
+    vim.cmd("wa")
+    require('yabs'):run_task('build')
+end
+
 function nvim_jai.get_declarations()
     if nvim_jai.channel_id == nil then
+        -- nvim_jai.channel_id = vim.fn.sockconnect("tcp", "localhost:12345", {rpc = true})
         return {}
     end
     local result = vim.fn.rpcrequest(nvim_jai.channel_id, "GetDeclarations")

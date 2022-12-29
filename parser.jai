@@ -281,7 +281,7 @@ build :: () {
 
                     if found
                     {
-                        if(expression.kind == .PROCEDURE_HEADER)
+                        if expression.kind == .PROCEDURE_HEADER
                         {
                             header := cast(*Code_Procedure_Header) expression;
                             if header.name != ""
@@ -289,17 +289,21 @@ build :: () {
                                 add_declaration(*all_functions, header, path);
                             }
                         }
-                        else if(expression.kind == .DECLARATION)
+                        else if expression.kind == .DECLARATION
                         {
                             declaration := cast(*Code_Declaration) expression;
-                            kind := declaration.expression.kind;
-                            if( kind == .STRUCT)
+                            // print("% - %\n", <<declaration, declaration.expression);
+                            if declaration.expression
                             {
-                                add_declaration(*all_structs, *declaration.entry, path);
-                            }
-                            else if(kind == .ENUM)
-                            {
-                                add_declaration(*all_enums, *declaration.entry, path);
+                                kind := declaration.expression.kind;
+                                if kind == .STRUCT
+                                {
+                                    add_declaration(*all_structs, *declaration.entry, path);
+                                }
+                                else if kind == .ENUM
+                                {
+                                    add_declaration(*all_enums, *declaration.entry, path);
+                                }
                             }
                         }
                     }
