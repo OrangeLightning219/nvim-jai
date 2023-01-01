@@ -73,7 +73,6 @@ function nvim_jai.get_declarations()
         for file, declarations in pairs(cache) do
             local functions = declarations["functions"]
             local structs = declarations["structs"]
-            local enums = declarations["enums"]
             
             for index, funct in ipairs(functions) do
                 local entry = funct
@@ -87,17 +86,9 @@ function nvim_jai.get_declarations()
                 local entry = struct
                 entry["bufnr"] = vim.uri_to_bufnr(file)
                 entry["path"] = file
-                entry["symbol_type"] = "struct"
                 table.insert(entries, entry)
             end
 
-            for index, enum in ipairs(enums) do
-                local entry = enum
-                entry["bufnr"] = vim.uri_to_bufnr(file)
-                entry["path"] = file
-                entry["symbol_type"] = "enum"
-                table.insert(entries, entry)
-            end
         end
         nvim_jai.response_cache = cache;
         nvim_jai.declaration_entry_cache = entries
@@ -112,12 +103,12 @@ function nvim_jai.create_declaration_entry(entry)
     entry["finish"] = 0
     entry["display"] = function(self, picker)
         local highlights = {}
-        if entry["symbol_type"] == "enum" or entry["symbol_type"] == "struct" then
+        if entry["symbol_type"] ~= "function" then
             highlights = 
             {
                 {{0, entry["name"]}, "Type"}, 
                 {{entry["name"] + 1, entry["name"] + 3}, "Keyword"},
-                {{entry["name"] + 4, entry["name"] + 4 + #entry["symbol_type"]}, "Keyword"}
+                {{entry["name"] + 4, entry["name"] + 4 + entry["symbol_type"]}, "Keyword"}
             }
         else -- function
             local type_length = 2 --entry["return_type"]

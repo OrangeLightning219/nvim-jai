@@ -1,6 +1,6 @@
 #import "Bit_Operations";
 
-MP_Type :: enum u8 #specified
+MP_Type :: enum u8 #specified 
 {
     INVALID :: 0xFF;
     // https://github.com/msgpack/msgpack/blob/master/spec.md#formats
@@ -42,14 +42,23 @@ MP_Type :: enum u8 #specified
     NEGATIVE_FIX_INT :: 0xe0;
 }
 
-MP_Parser :: struct
+MP_Parser :: struct 
 {
     at: *u8;
 }
 
-test :: (parser: $T) -> (asd: float, zxc: **MP_Parser)
+test :: ( parser: $T, sdf: ( dfg: int ) -> int ) -> ( asd: float, zxc: **MP_Parser )
 {
+}
 
+test2 :: () -> ( asd: int, zxc: u8, ( int, *int ) -> int, ( int, int ) )
+{
+    return 0, 0, null, null;
+}
+
+test3 :: () -> float, s16
+{
+    return 0.0, 0;
 }
 
 get_type :: ( parser: *MP_Parser ) -> MP_Type
@@ -61,11 +70,11 @@ get_type :: ( parser: *MP_Parser ) -> MP_Type
     else if byte >= 0x90 && byte <= 0x9f { result = .FIX_ARRAY; }
     else if byte >= 0xa0 && byte <= 0xbf { result = .FIX_STRING; }
     else if byte >= 0xe0 && byte <= 0xff { result = .NEGATIVE_FIX_INT; }
-    else
+    else 
     {
-        result = cast(MP_Type) byte;
+        result = cast( MP_Type )byte;
     }
-
+    
     return result;
 }
 
@@ -73,22 +82,22 @@ parse_array_length :: ( parser: *MP_Parser ) -> u32
 {
     result: u32 = 0xFFFFFFFF;
     type := get_type( parser );
-
-    if type ==
+    
+    if type == 
     {
-        case .FIX_ARRAY;
-            result = <<parser.at & 0b00001111;
-            parser.at += 1;
-
-        case .ARRAY_16;
-            result = byte_swap( << cast( *u16 ) ( parser.at + 1 ) );
-            parser.at += 3;
-
-        case .ARRAY_32;
-            result = byte_swap( << cast(*u32) ( parser.at + 1 ) );
-            parser.at += 5;
+    case .FIX_ARRAY;
+        result = <<parser.at & 0b00001111;
+        parser.at += 1;
+        
+    case .ARRAY_16;
+        result = byte_swap( <<cast( *u16 )( parser.at + 1 ) );
+        parser.at += 3;
+        
+    case .ARRAY_32;
+        result = byte_swap( <<cast( *u32 )( parser.at + 1 ) );
+        parser.at += 5;
     }
-
+    
     return result;
 }
 
@@ -96,23 +105,23 @@ parse_uint :: ( parser: *MP_Parser ) -> u32
 {
     result: u32 = 0xFFFFFFFF;
     type := get_type( parser );
-    if type ==
+    if type == 
     {
-        case .POSITIVE_FIX_INT;
-            result = <<parser.at & 0b01111111;
-            parser.at += 1;
-
-        case .UINT_8;
-            result = <<( parser.at + 1 );
-            parser.at += 2;
-
-        case .UINT_16;
-            result = byte_swap( << cast( *u16 ) ( parser.at + 1 ) );
-            parser.at += 3;
-
-        case .UINT_32;
-            result = byte_swap( << cast( *u32 ) ( parser.at + 1 ) );
-            parser.at += 5;
+    case .POSITIVE_FIX_INT;
+        result = <<parser.at & 0b01111111;
+        parser.at += 1;
+        
+    case .UINT_8;
+        result = <<( parser.at + 1 );
+        parser.at += 2;
+        
+    case .UINT_16;
+        result = byte_swap( <<cast( *u16 )( parser.at + 1 ) );
+        parser.at += 3;
+        
+    case .UINT_32;
+        result = byte_swap( <<cast( *u32 )( parser.at + 1 ) );
+        parser.at += 5;
     }
     return result;
 }
@@ -121,72 +130,72 @@ parse_string :: ( parser: *MP_Parser ) -> string
 {
     result: string;
     type := get_type( parser );
-    if type ==
+    if type == 
     {
-        case .FIX_STRING;
-            result.count= <<parser.at & 0b00011111;
-            result.data = parser.at + 1;
-            parser.at += result.count + 1;
-
-        case .STRING_8;
-            result.count = <<( parser.at + 1 );
-            result.data = parser.at + 2;
-            parser.at += result.count + 2;
-
-        case .STRING_16;
-            result.count = byte_swap( << cast( *u16 ) ( parser.at + 1 ) );
-            result.data = parser.at + 3;
-            parser.at += result.count + 3;
-
-        case .STRING_32;
-            result.count = byte_swap( << cast( *u32 ) ( parser.at + 1 ) );
-            result.data = parser.at + 5;
-            parser.at += result.count + 5;
+    case .FIX_STRING;
+        result.count = <<parser.at & 0b00011111;
+        result.data = parser.at + 1;
+        parser.at += result.count + 1;
+        
+    case .STRING_8;
+        result.count = <<( parser.at + 1 );
+        result.data = parser.at + 2;
+        parser.at += result.count + 2;
+        
+    case .STRING_16;
+        result.count = byte_swap( <<cast( *u16 )( parser.at + 1 ) );
+        result.data = parser.at + 3;
+        parser.at += result.count + 3;
+        
+    case .STRING_32;
+        result.count = byte_swap( <<cast( *u32 )( parser.at + 1 ) );
+        result.data = parser.at + 5;
+        parser.at += result.count + 5;
     }
-
+    
     return result;
 }
 
-MP_Encoder :: struct
+MP_Encoder :: struct 
 {
     at: *u8;
     length: u32;
     allocated_size: u32;
-};
+ };
 
-encode_uint :: ( value: u32, encoder: *MP_Encoder ) 
+encode_uint :: ( value: u32, encoder: *MP_Encoder )
 {
     if value < 128
     {
-        assert(encoder.length + 1 <= encoder.allocated_size);
-        <<encoder.at = cast( u8 ) value;
+        assert( encoder.length + 1 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )value;
         encoder.at += 1;
         encoder.length += 1;
     }
     else if value <= 0xFF
     {
-        assert(encoder.length + 2 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.UINT_8;
+        assert( encoder.length + 2 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.UINT_8;
         encoder.at += 1;
-        <<encoder.at = cast( u8 ) value;
+        <<encoder.at = cast( u8 )value;
         encoder.at += 1;
         encoder.length += 2;
     }
     else if value <= 0xFFFF
     {
-        assert(encoder.length + 3 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.UINT_16;
+        assert( encoder.length + 3 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.UINT_16;
         encoder.at += 1;
-        <<( cast( *u16 ) encoder.at ) = byte_swap( cast( u16 ) value );
+        <<( cast( *u16 )encoder.at ) = byte_swap( cast( u16 )value );
         encoder.at += 2;
         encoder.length += 3;
     }
-    else
+    else 
     {
-        assert(encoder.length + 5 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.UINT_32;
+        assert( encoder.length + 5 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.UINT_32;
         encoder.at += 1;
-        <<( cast( *u32 ) encoder.at ) = byte_swap( cast( u32 ) value );
+        <<( cast( *u32 )encoder.at ) = byte_swap( cast( u32 )value );
         encoder.at += 4;
         encoder.length += 5;
     }
@@ -194,8 +203,8 @@ encode_uint :: ( value: u32, encoder: *MP_Encoder )
 
 encode_nil :: ( encoder: *MP_Encoder )
 {
-    assert(encoder.length + 1 <= encoder.allocated_size);
-    <<encoder.at = cast(u8) MP_Type.NIL;
+    assert( encoder.length + 1 <= encoder.allocated_size );
+    <<encoder.at = cast( u8 )MP_Type.NIL;
     encoder.at += 1;
     encoder.length += 1;
 }
@@ -204,26 +213,26 @@ encode_map :: ( length: u32, encoder: *MP_Encoder )
 {
     if length < 16
     {
-        assert(encoder.length + 1 <= encoder.allocated_size);
-        <<encoder.at = (cast(u8) MP_Type.FIX_MAP) | cast( u8 ) length;
+        assert( encoder.length + 1 <= encoder.allocated_size );
+        <<encoder.at = ( cast( u8 )MP_Type.FIX_MAP ) | cast( u8 )length;
         encoder.at += 1;
         encoder.length += 1;
     }
     else if length <= 0xFFFF
     {
-        assert(encoder.length + 3 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.MAP_16;
+        assert( encoder.length + 3 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.MAP_16;
         encoder.at += 1;
-        <<( cast( *u16 ) encoder.at ) = byte_swap( cast( u16 ) length );
+        <<( cast( *u16 )encoder.at ) = byte_swap( cast( u16 )length );
         encoder.at += 2;
         encoder.length += 3;
     }
-    else
+    else 
     {
-        assert(encoder.length + 5 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.MAP_32;
+        assert( encoder.length + 5 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.MAP_32;
         encoder.at += 1;
-        <<( cast( *u32 ) encoder.at ) = byte_swap( cast( u32 ) length );
+        <<( cast( *u32 )encoder.at ) = byte_swap( cast( u32 )length );
         encoder.at += 4;
         encoder.length += 5;
     }
@@ -233,26 +242,26 @@ encode_array :: ( length: u32, encoder: *MP_Encoder )
 {
     if length < 16
     {
-        assert(encoder.length + 1 <= encoder.allocated_size);
-        <<encoder.at = (cast(u8) MP_Type.FIX_ARRAY) | cast( u8 ) length;
+        assert( encoder.length + 1 <= encoder.allocated_size );
+        <<encoder.at = ( cast( u8 )MP_Type.FIX_ARRAY ) | cast( u8 )length;
         encoder.at += 1;
         encoder.length += 1;
     }
     else if length <= 0xFFFF
     {
-        assert(encoder.length + 3 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.ARRAY_16;
+        assert( encoder.length + 3 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.ARRAY_16;
         encoder.at += 1;
-        <<( cast( *u16 ) encoder.at ) = byte_swap( cast( u16 ) length );
+        <<( cast( *u16 )encoder.at ) = byte_swap( cast( u16 )length );
         encoder.at += 2;
         encoder.length += 3;
     }
-    else
+    else 
     {
-        assert(encoder.length + 5 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.ARRAY_32;
+        assert( encoder.length + 5 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.ARRAY_32;
         encoder.at += 1;
-        <<( cast( *u32 ) encoder.at ) = byte_swap( cast( u32 ) length );
+        <<( cast( *u32 )encoder.at ) = byte_swap( cast( u32 )length );
         encoder.at += 4;
         encoder.length += 5;
     }
@@ -261,59 +270,59 @@ encode_array :: ( length: u32, encoder: *MP_Encoder )
 encode_string :: ( s: string, encoder: *MP_Encoder )
 {
     length := s.count;
-
+    
     if length < 32
     {
-        assert(encoder.length + 1 <= encoder.allocated_size);
-        <<encoder.at =  (cast(u8) MP_Type.FIX_STRING)| cast( u8 ) length;
+        assert( encoder.length + 1 <= encoder.allocated_size );
+        <<encoder.at = ( cast( u8 )MP_Type.FIX_STRING ) | cast( u8 )length;
         encoder.at += 1;
         encoder.length += 1;
     }
     else if length <= 0xFF
     {
-        assert(encoder.length + 2 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.STRING_8;
+        assert( encoder.length + 2 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.STRING_8;
         encoder.at += 1;
-        <<encoder.at = cast( u8 ) length;
+        <<encoder.at = cast( u8 )length;
         encoder.at += 1;
         encoder.length += 2;
     }
     else if length <= 0xFFFF
     {
-        assert(encoder.length + 3 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.STRING_16;
+        assert( encoder.length + 3 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.STRING_16;
         encoder.at += 1;
-        <<( cast( *u16 ) encoder.at ) = byte_swap( cast( u16 ) length );
+        <<( cast( *u16 )encoder.at ) = byte_swap( cast( u16 )length );
         encoder.at += 1;
         encoder.length += 3;
     }
-    else
+    else 
     {
-        assert(encoder.length + 5 <= encoder.allocated_size);
-        <<encoder.at = cast(u8) MP_Type.STRING_32;
+        assert( encoder.length + 5 <= encoder.allocated_size );
+        <<encoder.at = cast( u8 )MP_Type.STRING_32;
         encoder.at += 1;
-        <<( cast( *u32 ) encoder.at ) = byte_swap( cast( u32 ) length );
+        <<( cast( *u32 )encoder.at ) = byte_swap( cast( u32 )length );
         encoder.at += 1;
         encoder.length += 5;
     }
-
-    assert(encoder.length + length <= encoder.allocated_size);
+    
+    assert( encoder.length + length <= encoder.allocated_size );
     for i: 0..length - 1
     {
         <<encoder.at = s.data[ i ];
         encoder.at += 1;
     }
-    encoder.length += cast( u32 ) length;
+    encoder.length += cast( u32 )length;
 }
 
 encode_bool :: ( value: bool, encoder: *MP_Encoder )
 {
-    assert(encoder.length + 1 <= encoder.allocated_size);
+    assert( encoder.length + 1 <= encoder.allocated_size );
     if value
     {
         <<encoder.at = xx MP_Type.BOOL_TRUE;
     }
-    else
+    else 
     {
         <<encoder.at = xx MP_Type.BOOL_FALSE;
     }
